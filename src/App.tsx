@@ -1,4 +1,14 @@
-import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import {
+  cloneElement,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 type Page = "home" | "events" | "gallery" | "team" | "merch" | "soon";
 type EventItem = {
@@ -14,25 +24,23 @@ type EventItem = {
 
 const TICKET_URL = "https://haaafla.com/event/sol-beats-dcb2a9a3";
 const INSTAGRAM_URL = "https://www.instagram.com/underthestars.ke?cplk=OWw5Zmw5Z2Uzcjlz";
+const EMAIL = "hello@underthestars.co.ke";
+// Add your WhatsApp number here in international format, no "+" or spaces (e.g. "254712345678")
+const WHATSAPP_NUMBER = "";
+const whatsapp = (text: string) =>
+  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+const MERCH_PRICE = "KES 2,500";
 
 const asset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
 
 const media = {
+  logo: asset("brand/uts-logo.png"),
   solSign: asset("brand/sol-sign.jpg"),
   bigBros: asset("brand/big-bros.jpg"),
   solCups: asset("brand/sol-cups.jpg"),
   mvera: asset("brand/mvera.jpg"),
   petras: asset("brand/dj-petras.jpg"),
-  // Real photos from the day on the water
   memory: (n: number) => asset(`gallery/memory-${String(n).padStart(2, "0")}.jpg`),
-  merch1:
-    "https://images.unsplash.com/photo-1732475530155-90158f3b5f79?auto=format&fit=crop&w=1000&q=85",
-  merch2:
-    "https://images.unsplash.com/photo-1563899981-1c5ba5185ca2?auto=format&fit=crop&w=1000&q=85",
-  merch3:
-    "https://images.unsplash.com/photo-1669266586576-639523db9306?auto=format&fit=crop&w=1000&q=85",
-  merch4:
-    "https://images.unsplash.com/photo-1633292750937-120a94f5c2bb?auto=format&fit=crop&w=1000&q=85",
 };
 
 const events: EventItem[] = [
@@ -40,7 +48,7 @@ const events: EventItem[] = [
     id: "sol-and-beats",
     title: "Sol & Beats",
     date: "28 November · 8PM—6AM",
-    venue: "Giriyama Paradise",
+    venue: "Giryama Paradise",
     city: "Kilifi",
     price: "Tickets on Haaafla",
     image: media.solSign,
@@ -86,32 +94,308 @@ const gallery = [
 ];
 
 const merchandise = [
-  { name: "Orbit Heavyweight Tee", price: "KES 3,200", image: media.merch1 },
-  { name: "After Hours Hoodie", price: "KES 6,500", image: media.merch2 },
-  { name: "Signal Cap", price: "KES 2,200", image: media.merch3 },
-  { name: "Night Shift Tote", price: "KES 1,800", image: media.merch4 },
+  { name: "Aurora Edition", tag: "White · Sailboat print", image: asset("merch/aurora.webp") },
+  { name: "Eclipse Edition", tag: "Orange · Kanji detail", image: asset("merch/eclipse.webp") },
+  { name: "Luna Edition", tag: "White · Back print", image: asset("merch/luna.webp") },
+  { name: "Phoenix Edition", tag: "Teal · Logo print", image: asset("merch/phoenix.webp") },
+  { name: "Standard Tee", tag: "White · Outline logo", image: asset("merch/standard.webp") },
+  { name: "Vega Edition · Burgundy", tag: "Burgundy · Text print", image: asset("merch/vega-burgundy.webp") },
+  { name: "Vega Edition · White", tag: "White · Text print", image: asset("merch/vega-white.webp") },
 ];
 
+function Icon({ name }: { name: IconName }) {
+  return (
+    <svg
+      className="icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {iconPaths[name]}
+    </svg>
+  );
+}
+type IconName = "ticket" | "pin" | "clock" | "calendar" | "mail" | "arrow" | "up";
+const iconPaths: Record<IconName, ReactNode> = {
+  ticket: (
+    <>
+      <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+      <path d="M13 5v2M13 11v2M13 17v2" />
+    </>
+  ),
+  pin: (
+    <>
+      <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 6.5V12l3.5 2" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="4.5" width="18" height="17" rx="2.5" />
+      <path d="M16 2.5v4M8 2.5v4M3 10h18" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+      <path d="m3 7 9 6 9-6" />
+    </>
+  ),
+  arrow: <path d="M7 17 17 7M8 7h9v9" />,
+  up: <path d="M12 19V5M5 12l7-7 7 7" />,
+};
+
 function Arrow() {
-  return <span aria-hidden="true">↗</span>;
+  return <Icon name="arrow" />;
+}
+
+/* Brand-colour social icons (shared gradient lives in <IconDefs />) */
+function IconDefs() {
+  return (
+    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+      <defs>
+        <radialGradient id="ig-grad" cx="0.3" cy="1.05" r="1.3">
+          <stop offset="0" stopColor="#feda75" />
+          <stop offset="0.25" stopColor="#fa7e1e" />
+          <stop offset="0.5" stopColor="#d62976" />
+          <stop offset="0.75" stopColor="#962fbf" />
+          <stop offset="1" stopColor="#4f5bd5" />
+        </radialGradient>
+      </defs>
+    </svg>
+  );
 }
 
 function InstagramIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.4" cy="6.7" r="1" className="icon-fill" />
+    <svg className="brand-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+      <rect width="24" height="24" rx="6.5" fill="url(#ig-grad)" />
+      <rect x="5.2" y="5.2" width="13.6" height="13.6" rx="4.2" fill="none" stroke="#fff" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="3.2" fill="none" stroke="#fff" strokeWidth="1.6" />
+      <circle cx="16.4" cy="7.6" r="1" fill="#fff" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg className="brand-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+      <rect width="24" height="24" rx="6.5" fill="#25d366" />
+      <path
+        d="M12 4.8a7.2 7.2 0 0 0-6.2 10.9L4.9 19.2l3.6-.9A7.2 7.2 0 1 0 12 4.8Z"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.4 8.9c.2 2.3 2.4 4.7 4.8 5.2.6-.2 1-.7 1.1-1.3l-1.3-.7-.7.5a3.7 3.7 0 0 1-2.2-2.2l.5-.7-.7-1.3c-.6.1-1.1.5-1.5 1.5Z"
+        fill="#fff"
+      />
+    </svg>
+  );
+}
+
+/* ---------- Hand-drawn doodles that draw themselves when scrolled into view ---------- */
+const P = (d: string) => <path d={d} pathLength={1} />;
+const spark = (x: number, y: number, r: number) =>
+  P(`M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z`);
+const rays = (cx: number, cy: number, n: number, r1: number, a: number, b: number) =>
+  Array.from({ length: n }, (_, i) => {
+    const t = (i * 2 * Math.PI) / n;
+    const r2 = i % 2 ? a : b;
+    const f = (v: number) => v.toFixed(1);
+    return P(
+      `M${f(cx + Math.cos(t) * r1)} ${f(cy + Math.sin(t) * r1)}L${f(cx + Math.cos(t) * r2)} ${f(cy + Math.sin(t) * r2)}`,
+    );
+  });
+const wave = (y: number, n: number) => P(`M0 ${y}q18 -20 37 0${" t37 0".repeat(n)}`);
+
+const doodles: Record<string, { vb: string; shapes: ReactElement[] }> = {
+  dhow: {
+    vb: "0 0 200 200",
+    shapes: [
+      P("M22 136 L178 128 C166 156 122 168 82 164 C52 160 32 150 22 136 Z"),
+      P("M98 132 L98 26"),
+      P("M98 34 C132 60 152 94 170 122 L98 124"),
+      P("M94 54 C74 78 58 102 40 124 L94 124"),
+      P("M98 26 l16 4 l-16 7"),
+      P("M52 146 q16 6 34 4"),
+      P("M8 184 q10 -10 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0"),
+    ],
+  },
+  sun: {
+    vb: "0 0 200 200",
+    shapes: [
+      <circle cx="100" cy="100" r="32" pathLength={1} />,
+      ...rays(100, 100, 16, 46, 62, 76),
+      P("M86 94 q6 -8 13 -2"),
+      P("M106 92 q7 -7 13 0"),
+      P("M88 110 q12 11 26 0"),
+    ],
+  },
+  star: {
+    vb: "0 0 200 200",
+    shapes: [spark(100, 100, 78), spark(40, 46, 18), spark(164, 150, 24), P("M160 40 l0.1 0"), P("M34 150 l0.1 0")],
+  },
+  gulls: {
+    vb: "0 0 200 120",
+    shapes: [
+      P("M16 56 q20 -30 42 0 q20 -30 42 0"),
+      P("M118 30 q13 -20 26 0 q13 -20 26 0"),
+      P("M138 92 q9 -14 18 0 q9 -14 18 0"),
+    ],
+  },
+  headphones: {
+    vb: "0 0 200 200",
+    shapes: [
+      P("M44 124 C44 48 156 48 156 124"),
+      <rect x="28" y="118" width="28" height="54" rx="12" pathLength={1} />,
+      <rect x="144" y="118" width="28" height="54" rx="12" pathLength={1} />,
+      P("M158 172 C160 198 120 202 100 192"),
+      P("M14 130 q-8 14 0 28"),
+      P("M186 130 q8 14 0 28"),
+    ],
+  },
+  vinyl: {
+    vb: "0 0 200 200",
+    shapes: [
+      <circle cx="96" cy="108" r="70" pathLength={1} />,
+      <circle cx="96" cy="108" r="54" pathLength={1} />,
+      <circle cx="96" cy="108" r="24" pathLength={1} />,
+      <circle cx="96" cy="108" r="5" pathLength={1} />,
+      P("M50 76 A56 56 0 0 1 92 54"),
+      P("M146 138 A56 56 0 0 1 106 160"),
+      P("M182 20 L154 96 l-6 8"),
+    ],
+  },
+  notes: {
+    vb: "0 0 200 200",
+    shapes: [
+      P("M72 150 V54 L152 38 V134"),
+      P("M72 80 L152 64"),
+      <ellipse cx="56" cy="152" rx="17" ry="12" transform="rotate(-20 56 152)" pathLength={1} />,
+      <ellipse cx="136" cy="136" rx="17" ry="12" transform="rotate(-20 136 136)" pathLength={1} />,
+      spark(176, 40, 12),
+    ],
+  },
+  palm: {
+    vb: "0 0 200 200",
+    shapes: [
+      P("M98 190 C92 150 106 112 100 72"),
+      P("M100 72 C74 46 44 52 24 80"),
+      P("M100 72 C128 42 162 50 182 80"),
+      P("M100 72 C88 44 98 22 114 12"),
+      P("M100 72 C70 70 52 92 46 118"),
+      P("M100 72 C128 70 148 92 154 116"),
+      <circle cx="95" cy="82" r="5" pathLength={1} />,
+      <circle cx="107" cy="84" r="5" pathLength={1} />,
+      P("M58 192 q42 -10 84 0"),
+    ],
+  },
+  camera: {
+    vb: "0 0 200 200",
+    shapes: [
+      <rect x="20" y="64" width="160" height="108" rx="14" pathLength={1} />,
+      P("M64 64 l10 -20 h52 l10 20"),
+      <circle cx="100" cy="118" r="30" pathLength={1} />,
+      <circle cx="100" cy="118" r="15" pathLength={1} />,
+      P("M150 80 h14"),
+      spark(168, 30, 10),
+    ],
+  },
+  tee: {
+    vb: "0 0 200 200",
+    shapes: [
+      P("M62 36 L16 72 L42 108 L62 94 V176 H138 V94 L158 108 L184 72 L138 36 C128 60 72 60 62 36 Z"),
+      spark(100, 118, 18),
+      P("M80 150 h40"),
+    ],
+  },
+  waves: {
+    vb: "0 0 300 60",
+    shapes: [wave(20, 7), wave(46, 7)],
+  },
+  constellation: {
+    vb: "0 0 620 240",
+    shapes: [
+      P("M40 190 L130 120 L226 164 L318 74 L412 120 L500 46 L586 98"),
+      spark(40, 190, 12),
+      spark(130, 120, 16),
+      spark(226, 164, 11),
+      spark(318, 74, 20),
+      spark(412, 120, 13),
+      spark(500, 46, 17),
+      spark(586, 98, 12),
+    ],
+  },
+};
+
+function Doodle({
+  name,
+  className = "",
+  style,
+}: {
+  name: keyof typeof doodles;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  const ref = useRef<SVGSVGElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setSeen(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setSeen(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.15 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const { vb, shapes } = doodles[name];
+  return (
+    <svg
+      ref={ref}
+      viewBox={vb}
+      className={`doodle ${seen ? "drawn" : ""} ${className}`}
+      style={style}
+      aria-hidden="true"
+    >
+      {shapes.map((shape, i) =>
+        cloneElement(shape as ReactElement<{ style?: CSSProperties }>, {
+          key: i,
+          style: { "--k": i } as CSSProperties,
+        }),
+      )}
     </svg>
   );
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="brand">
-      <img src={asset("favicon.png")} alt="" className={compact ? "brand-icon small" : "brand-icon"} />
-      <span className="brand-text">UNDER THE STARS</span>
-    </div>
+    <img
+      src={media.logo}
+      alt="Under The Stars"
+      className={compact ? "brand-logo small" : "brand-logo"}
+    />
   );
 }
 
@@ -127,7 +411,9 @@ function SectionLabel({ children }: { children: ReactNode }) {
 function TicketLink({ className = "solid-button", children = "Get tickets" }) {
   return (
     <a className={className} href={TICKET_URL} target="_blank" rel="noreferrer">
-      {children} <Arrow />
+      <Icon name="ticket" />
+      <span>{children}</span>
+      <Arrow />
     </a>
   );
 }
@@ -135,7 +421,7 @@ function TicketLink({ className = "solid-button", children = "Get tickets" }) {
 function Marquee() {
   const copy = Array.from({ length: 5 }, (_, index) => (
     <span key={index}>
-      SOL & BEATS <i>✦</i> KILIFI <i>✦</i> 8PM TILL 6AM <i>✦</i>
+      SOL & BEATS <i>✦</i> GIRYAMA PARADISE <i>✦</i> KILIFI <i>✦</i> 8PM TILL 6AM <i>✦</i>
     </span>
   ));
   return (
@@ -151,6 +437,18 @@ function App() {
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [filter, setFilter] = useState("All");
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () =>
+      setScrolled(
+        window.scrollY > 640 &&
+          window.innerHeight + window.scrollY < document.documentElement.scrollHeight - 260,
+      );
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const navigate = (next: Page) => {
     setPage(next);
@@ -173,6 +471,7 @@ function App() {
 
   return (
     <div className="site-shell">
+      <IconDefs />
       <header className="header">
         <button className="logo-button" onClick={() => navigate("home")} aria-label="Go home">
           <Brand compact />
@@ -223,7 +522,7 @@ function App() {
             )}
           </nav>
           <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="menu-social">
-            <InstagramIcon /> @underthestars.ke
+            <InstagramIcon /> <span>@underthestars.ke</span>
           </a>
         </div>
       )}
@@ -248,6 +547,17 @@ function App() {
       </main>
 
       <Footer navigate={navigate} />
+
+      <a
+        className={`float-ticket ${scrolled && !menuOpen && lightbox === null ? "show" : ""}`}
+        href={TICKET_URL}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Get Sol and Beats tickets"
+      >
+        <Icon name="ticket" />
+        <span>Get tickets</span>
+      </a>
 
       {lightbox !== null && (
         <div className="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
@@ -306,6 +616,9 @@ function Home({
     <>
       <section className="hero" onMouseMove={moveCollage}>
         <div className="sun-orb" />
+        <Doodle name="gulls" className="d-gulls" />
+        <Doodle name="dhow" className="d-boat float" />
+        <Doodle name="star" className="d-star-a twinkle" />
         <div className="hero-copy">
           <p className="hero-kicker">KILIFI · EDITION THREE · 8PM—6AM</p>
           <h1>
@@ -342,8 +655,10 @@ function Home({
         </button>
       </section>
       <Marquee />
+      <TicketStrip />
 
       <section className="intro section-pad">
+        <Doodle name="notes" className="d-notes float" />
         <div className="intro-title">
           <SectionLabel>The UTS feeling</SectionLabel>
           <h2>
@@ -368,6 +683,8 @@ function Home({
       </section>
 
       <section className="featured section-pad">
+        <Doodle name="constellation" className="d-constellation" />
+        <Doodle name="waves" className="d-waves" />
         <div className="section-heading">
           <div>
             <SectionLabel>Now boarding</SectionLabel>
@@ -392,12 +709,12 @@ function Home({
             }}
           >
             <img src={media.solCups} alt="Sol and Beats edition three campaign artwork" />
-            <span className="image-tag">Tap to enter</span>
+            <span className="image-tag">View event</span>
           </button>
           <div className="event-meta">
             <span className="date-bubble">28 NOV</span>
             <h3>
-              GIRİYAMA
+              GIRYAMA
               <br />
               <span>PARADISE, KILIFI</span>
             </h3>
@@ -408,6 +725,8 @@ function Home({
       </section>
 
       <section className="lineup section-pad">
+        <Doodle name="headphones" className="d-headphones float" />
+        <Doodle name="vinyl" className="d-vinyl" />
         <div className="lineup-copy">
           <SectionLabel>On the controls</SectionLabel>
           <h2>
@@ -454,17 +773,16 @@ function Home({
           </div>
           <span>Follow the motion</span>
           <h3>
-            @UNDER
-            <br />
-            THESTARS.KE
+            @UNDERTHESTARS<em>.KE</em>
           </h3>
+          <p className="portal-note">Behind the scenes, drops and the next lineup first.</p>
           <b>↗</b>
         </a>
       </section>
 
       <section className="manifesto">
-        <span className="spark spark-a">✦</span>
-        <span className="spark spark-b">✦</span>
+        <Doodle name="constellation" className="d-sky" />
+        <Doodle name="star" className="d-star-b twinkle" />
         <p>THE NIGHT IS OUR PLAYGROUND</p>
         <h2>
           COME FOR THE MUSIC.
@@ -491,6 +809,7 @@ function Events({ openEvent }: { openEvent: (event: EventItem) => void }) {
           </>
         }
         note="Kilifi. Sunset to sunrise."
+        doodle="sun"
       />
       <section className="event-feature section-pad">
         <button className="event-poster" onClick={() => openEvent(events[0])}>
@@ -576,6 +895,7 @@ function GalleryPage({
           </>
         }
         note="Tap anything. Take it all in."
+        doodle="camera"
       />
       <div className="filter-bar section-pad">
         {categories.map((category) => (
@@ -635,6 +955,7 @@ function TeamPage() {
           </>
         }
         note="One crew. Many moving parts."
+        doodle="star"
       />
       <section className="crew-grid section-pad">
         {crews.map((crew) => (
@@ -660,8 +981,6 @@ function TeamPage() {
 }
 
 function MerchPage() {
-  const whatsapp =
-    "https://wa.me/?text=Hi%20UNDER%20THE%20STARS%2C%20I%20would%20like%20to%20order%20merch.";
   return (
     <div className="page">
       <PageHero
@@ -674,26 +993,45 @@ function MerchPage() {
           </>
         }
         note="Made for after dark and the day after."
+        doodle="tee"
       />
       <section className="merch-grid section-pad">
         {merchandise.map((item, index) => (
           <article className="product" key={item.name}>
-            <a href={whatsapp} target="_blank" rel="noreferrer" className="product-image">
-              <img src={item.image} alt={item.name} />
-              <span>0{index + 1}</span>
-              <b>Order ↗</b>
+            <a
+              href={whatsapp(`Hi UNDER THE STARS, I would like to order the ${item.name} (${MERCH_PRICE}).`)}
+              target="_blank"
+              rel="noreferrer"
+              className="product-image"
+              aria-label={`Order ${item.name} on WhatsApp`}
+            >
+              <img src={item.image} alt={`${item.name} t-shirt`} loading="lazy" />
+              <span>{String(index + 1).padStart(2, "0")}</span>
             </a>
-            <div>
-              <h3>{item.name}</h3>
-              <p>{item.price}</p>
+            <div className="product-info">
+              <div>
+                <h3>{item.name}</h3>
+                <small>{item.tag}</small>
+              </div>
+              <p>{MERCH_PRICE}</p>
             </div>
+            <a
+              className="order-link"
+              href={whatsapp(`Hi UNDER THE STARS, I would like to order the ${item.name} (${MERCH_PRICE}).`)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <WhatsAppIcon />
+              <span>Order on WhatsApp</span>
+            </a>
           </article>
         ))}
       </section>
       <div className="order-note section-pad">
         <p>Small drops. Once they’re gone, they’re gone.</p>
-        <a className="outline-button" href={whatsapp} target="_blank" rel="noreferrer">
-          Order on WhatsApp <Arrow />
+        <a className="outline-button" href={whatsapp("Hi UNDER THE STARS, I would like to order merch.")} target="_blank" rel="noreferrer">
+          <WhatsAppIcon />
+          <span>Ask about sizes</span>
         </a>
       </div>
     </div>
@@ -721,9 +1059,11 @@ function ComingSoon({ navigate }: { navigate: (page: Page) => void }) {
         <p>Stories, early access, drops and more ways to live under the stars.</p>
         <a
           className="solid-button"
-          href="mailto:hello@underthestars.co.ke?subject=Keep%20me%20updated"
+          href={`mailto:${EMAIL}?subject=Keep%20me%20updated`}
         >
-          Keep me in the loop <Arrow />
+          <Icon name="mail" />
+          <span>Keep me in the loop</span>
+          <Arrow />
         </a>
       </div>
       <button className="soon-back" onClick={() => navigate("home")}>
@@ -733,9 +1073,20 @@ function ComingSoon({ navigate }: { navigate: (page: Page) => void }) {
   );
 }
 
-function PageHero({ eyebrow, title, note }: { eyebrow: string; title: ReactNode; note: string }) {
+function PageHero({
+  eyebrow,
+  title,
+  note,
+  doodle,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  note: string;
+  doodle: keyof typeof doodles;
+}) {
   return (
     <section className="page-hero section-pad">
+      <Doodle name={doodle} className="d-page float" />
       <SectionLabel>{eyebrow}</SectionLabel>
       <div>
         <h1>{title}</h1>
@@ -747,41 +1098,74 @@ function PageHero({ eyebrow, title, note }: { eyebrow: string; title: ReactNode;
 
 function Footer({ navigate }: { navigate: (page: Page) => void }) {
   return (
-    <footer>
-      <div className="footer-top">
-        <Brand />
-        <h2>
-          SEE YOU
-          <br />
-          <i>UNDER THE STARS.</i>
-        </h2>
-        <a className="footer-instagram" href={INSTAGRAM_URL} target="_blank" rel="noreferrer">
-          <InstagramIcon />
+    <footer className="footer">
+      <div className="footer-main">
+        <button className="footer-brand" onClick={() => navigate("home")} aria-label="Go home">
+          <Brand compact />
           <span>
-            Follow
+            Home-grown music, culture
             <br />
-            @underthestars.ke
+            and nightlife in Kenya.
           </span>
-        </a>
-      </div>
-      <div className="footer-nav">
-        <div>
+        </button>
+        <nav className="footer-links" aria-label="Footer">
           {(["home", "events", "gallery", "team", "merch"] as Page[]).map((item) => (
             <button key={item} onClick={() => navigate(item)}>
               {item === "merch" ? "Shop" : item}
             </button>
           ))}
+        </nav>
+        <div className="footer-actions">
+          <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label="Instagram" title="Instagram">
+            <InstagramIcon />
+          </a>
+          <a href={whatsapp("Hi UNDER THE STARS!")} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp">
+            <WhatsAppIcon />
+          </a>
+          <a className="mail-chip" href={`mailto:${EMAIL}`} aria-label="Email" title="Email">
+            <Icon name="mail" />
+          </a>
+          <TicketLink className="mini-ticket">Tickets</TicketLink>
         </div>
-        <TicketLink>Get Sol & Beats tickets</TicketLink>
       </div>
       <div className="footer-bottom">
-        <span>© 2025 UNDER THE STARS</span>
-        <span>NAIROBI · KILIFI · KENYA</span>
-        <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          BACK TO TOP ↑
+        <div className="credit">
+          <span>© {new Date().getFullYear()} UNDER THE STARS</span>
+          <b>BY APREIS TECHIES</b>
+        </div>
+        <span className="where">NAIROBI · KILIFI · KENYA</span>
+        <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Back to top">
+          <Icon name="up" />
         </button>
       </div>
     </footer>
+  );
+}
+
+function TicketStrip() {
+  return (
+    <section className="ticket-strip section-pad" aria-label="Tickets">
+      <div className="ticket-card">
+        <div className="ticket-date">
+          <small>SAT</small>
+          <b>28</b>
+          <span>NOV</span>
+        </div>
+        <div className="ticket-body">
+          <span className="ticket-kicker">Edition three</span>
+          <h2>Sol &amp; Beats</h2>
+          <ul>
+            <li>
+              <Icon name="clock" /> 8PM — 6AM
+            </li>
+            <li>
+              <Icon name="pin" /> Giryama Paradise, Kilifi
+            </li>
+          </ul>
+        </div>
+        <TicketLink className="solid-button ticket-cta">Get tickets</TicketLink>
+      </div>
+    </section>
   );
 }
 
